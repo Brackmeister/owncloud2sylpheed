@@ -143,6 +143,23 @@ class MyXML
     puts @builder.to_xml
   end
 
+  # write the xml to the sylpheed configuration directory as addressbook with name "owncloud"
+  def writeAddressbook
+    addressbooklist = Pathname.new(Dir.home + "/.sylpheed-2.0/addrbook--index.xml")
+    if addressbooklist.exist?
+      input = Nokogiri::XML(File.new(addressbooklist))
+      owncloudaddressbook = input.root.xpath('//book[@name="owncloud"]/@file')
+      if owncloudaddressbook.nil? or owncloudaddressbook.empty?
+        # TODO: Create an address book called 'owncloud' if it doesn't exist yet
+        $stderr.puts "Didn't find the filename for the addressbook called 'owncloud'."
+      else
+        File.open(Dir.home + "/.sylpheed-2.0/" + owncloudaddressbook.to_s, 'w', 0600) {|f| f.write(@builder.to_xml) }
+      end
+    else
+      $stderr.puts "Error reading #{Pathname}"
+    end
+  end
+
 end # class MyXML
 
 ### "main" program starts here
@@ -153,6 +170,4 @@ mywebdav = MyWebdav.new(myconfig)
 addresses = mywebdav.findEmails
 
 myxml = MyXML.new(addresses)
-# for the time being, simply output the result to STDOUT
-myxml.print
-# TODO: parse the sylpheed address book list for an address book called "owncloud" and overwrite that. Create it if it doesn't exist yet
+myxml.writeAddressbook
