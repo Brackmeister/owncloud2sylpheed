@@ -7,6 +7,6 @@ At first start it will ask for the server, path, username and password and store
 
 The script will fetch all contacts from the owncloud server and create an XML structure that is usable with sylpheed. For the time being the XML is dumped to STDOUT. So to (over)write an existing address book do:
 
-```
+```Shell
 ruby owncloud2sylpheed.rb > ~/.sylpheed-2.0/addrbook-000008.xml
 ```
