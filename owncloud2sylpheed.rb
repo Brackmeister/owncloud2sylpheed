@@ -150,14 +150,33 @@ class MyXML
       input = Nokogiri::XML(File.new(addressbooklist))
       owncloudaddressbook = input.root.xpath('//book[@name="owncloud"]/@file')
       if owncloudaddressbook.nil? or owncloudaddressbook.empty?
-        # TODO: Create an address book called 'owncloud' if it doesn't exist yet
-        $stderr.puts "Didn't find the filename for the addressbook called 'owncloud'."
+        filename = addAddressbook(addressbooklist)
       else
-        File.open(Dir.home + "/.sylpheed-2.0/" + owncloudaddressbook.to_s, 'w', 0600) {|f| f.write(@builder.to_xml) }
+        filename = owncloudaddressbook.to_s
       end
+      File.open(Dir.home + "/.sylpheed-2.0/" + filename , 'w', 0600) {|f| f.write(@builder.to_xml) }
     else
       $stderr.puts "Error reading #{Pathname}"
     end
+  end
+
+  # when no book named "owncloud" exists, create it
+  def addAddressbook(indexfile)
+    input = Nokogiri::XML(File.new(indexfile))
+    max = 0
+    input.root.xpath('//book').each do |node|
+      number = /addrbook-0*([1-9][0-9]*).xml/.match(node['file'])[1].to_i
+      max = number if number > max
+    end
+    newaddressbookfile = "addrbook-%06d.xml" % [max+1]
+    node = Nokogiri::XML::Node.new "book", input
+    node['name'] = 'owncloud'
+    node['file'] = newaddressbookfile
+    input.root.xpath('book_list')[0].add_child(node)
+
+    File.open(indexfile, 'w') { |f| f.write(input.to_xml) }
+
+    return newaddressbookfile
   end
 
 end # class MyXML
