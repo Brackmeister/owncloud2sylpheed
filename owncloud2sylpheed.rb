@@ -136,6 +136,7 @@ class MyXML
         end
       }
     end
+	#puts @builder.to_xml
   end
 
   # output XML to STDOUT
@@ -145,7 +146,12 @@ class MyXML
 
   # write the xml to the sylpheed configuration directory as addressbook with name "owncloud"
   def writeAddressbook
-    addressbooklist = Pathname.new(Dir.home + "/.sylpheed-2.0/addrbook--index.xml")
+	if ENV['OS'] == 'Windows_NT'
+		basedir = ENV['APPDATA'] + "/Sylpheed/"
+	else
+		basedir = Dir.home + "/.sylpheed-2.0/"
+	end
+    addressbooklist = Pathname.new(basedir + "addrbook--index.xml")
     if addressbooklist.exist?
       input = Nokogiri::XML(File.new(addressbooklist))
       owncloudaddressbook = input.root.xpath('//book[@name="owncloud"]/@file')
@@ -154,9 +160,9 @@ class MyXML
       else
         filename = owncloudaddressbook.to_s
       end
-      File.open(Dir.home + "/.sylpheed-2.0/" + filename , 'w', 0600) {|f| f.write(@builder.to_xml) }
+      File.open(basedir + filename , 'w', 0600) {|f| f.write(@builder.to_xml) }
     else
-      $stderr.puts "Error reading #{Pathname}"
+      $stderr.puts "Error reading #{addressbooklist}"
     end
   end
 
