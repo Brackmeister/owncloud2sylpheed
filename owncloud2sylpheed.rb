@@ -29,6 +29,9 @@ class MyConfig
     else
       @config = initConf(pn)
     end
+	unless @config.nil?
+		    puts "\nUsing URL #{@config['url']}."
+	end
   end
 
   # some crude method to ask the user for the necessary settings if no config file was found yet
@@ -54,16 +57,19 @@ class MyConfig
     end
     fullurl += "://"+host+"/"+path+"/remote.php/carddav/addressbooks/"+user+"/contacts"
 
-    puts "Using URL #{fullurl}."
-
     conf = ParseConfig.new
     conf.add('url',  fullurl)
     conf.add('user', user)
     conf.add('pass', pass)
 
-    file = File.open(conffile, 'w', 0600)
-    conf.write(file)
-    file.close
+	begin
+		file = File.open(conffile, 'w', 0600)
+		conf.write(file)
+		file.close
+	rescue
+		$stderr.puts "\nCould not write config to #{conffile}"
+		return nil
+	end
 
     return conf
   end
@@ -95,6 +101,7 @@ class MyWebdav
 
   # find all vcard entries and add those to the addresses array that contain an email
   def findEmails
+	puts "\nFetching contacts. This may take a while..."
     addresses = []
     @dav.find('.',:recursive=>true,:suppress_errors=>true,:filename=>/\.vcf$/) do | item |
       cards = Vpim::Vcard.decode(item.content)
@@ -115,6 +122,7 @@ end # class MyWebdav
 class MyXML
   #constructor
   def initialize(addresses)
+	puts "\nCreating address book..."
     # create an XML address-book file suitable for sylpheed for all entries in addresses
     @builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
       xml.send(:"address-book", :name => "owncloud") {
@@ -160,9 +168,13 @@ class MyXML
       else
         filename = owncloudaddressbook.to_s
       end
-      File.open(basedir + filename , 'w', 0600) {|f| f.write(@builder.to_xml) }
+	  begin
+		File.open(basedir + filename , 'w', 0600) {|f| f.write(@builder.to_xml) }
+	  rescue
+		$stderr.puts "\nCould not write contacts to address book #{basedir + filename}"
+	  end
     else
-      $stderr.puts "Error reading #{addressbooklist}"
+      $stderr.puts "\nAddress book index file does not exist #{addressbooklist}"
     end
   end
 
@@ -180,7 +192,11 @@ class MyXML
     node['file'] = newaddressbookfile
     input.root.xpath('book_list')[0].add_child(node)
 
-    File.open(indexfile, 'w') { |f| f.write(input.to_xml) }
+	begin
+		File.open(indexfile, 'w') { |f| f.write(input.to_xml) }
+	rescue
+		$stderr.puts "\nCould not add new address book file to index #{indexfile}"
+	end
 
     return newaddressbookfile
   end
@@ -191,8 +207,10 @@ end # class MyXML
 # TODO: some kind of argument handling like --help, --verbose, --version etc.
 myconfig = MyConfig.new
 
-mywebdav = MyWebdav.new(myconfig)
-addresses = mywebdav.findEmails
+unless myconfig.config.nil?
+	mywebdav = MyWebdav.new(myconfig)
+	addresses = mywebdav.findEmails
 
-myxml = MyXML.new(addresses)
-myxml.writeAddressbook
+	myxml = MyXML.new(addresses)
+	myxml.writeAddressbook
+end
